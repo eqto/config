@@ -63,7 +63,7 @@ func parse(r io.Reader) *Config {
 	regexRoot := regexp.MustCompile(strRootLine)
 
 	root := ``
-	cfg := &Config{}
+	cfg := &Config{val: make(map[string]map[string]string)}
 	for scanner.Scan() {
 		strLine := scanner.Text()
 		if matches := regexLine.FindStringSubmatch(strLine); len(matches) > 0 {
