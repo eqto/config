@@ -67,7 +67,9 @@ func ParseFile(file string) (*Config, error) {
 	if e != nil {
 		return cfg, e
 	}
-	return parse(f), nil
+	cfg = parse(f)
+	cfg.file = file
+	return cfg, nil
 }
 
 func parse(r io.Reader) *Config {
