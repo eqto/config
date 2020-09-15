@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os"
 	"regexp"
@@ -45,6 +46,18 @@ func (c *Config) GetInt(key string) int {
 		return 0
 	}
 	return i
+}
+
+func (c *Config) String() string {
+	sb := strings.Builder{}
+	sb.WriteString(fmt.Sprintf("File: %s\n", c.file))
+	for rootName, rootVal := range c.val {
+		sb.WriteString(fmt.Sprintf("[%s]\n", rootName))
+		for key, val := range rootVal {
+			sb.WriteString(fmt.Sprintf("%s = %s\n", key, val))
+		}
+	}
+	return sb.String()
 }
 
 //ParseFile ...
