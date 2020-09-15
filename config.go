@@ -11,7 +11,7 @@ import (
 
 const (
 	strRootLine = `^(?Ui)\s*\[([a-z0-9]+)\].*$`
-	strLine     = `^(?Ui)\s*([a-z0-9_]+)\s*=\s*(.*)\s*((?:#|/{2,}).*|)$`
+	strLine     = `^(?Ui)\s*([a-z0-9_]+)\s*=\s*(.*)(\s+(?:#|/{2,}).*|)\s*$`
 )
 
 //Config ...
