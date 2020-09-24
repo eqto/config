@@ -52,13 +52,26 @@ func (c *Config) GetOr(key, def string) string {
 
 //GetInt ...
 func (c *Config) GetInt(key string) int {
-	str := c.Get(key)
-	if str == `` {
+	str := c.get(key)
+	if str == nil {
 		return 0
 	}
-	i, e := strconv.Atoi(str)
+	i, e := strconv.Atoi(*str)
 	if e != nil {
 		return 0
+	}
+	return i
+}
+
+//GetIntOr ...
+func (c *Config) GetIntOr(key string, def int) int {
+	str := c.get(key)
+	if str == nil {
+		return def
+	}
+	i, e := strconv.Atoi(*str)
+	if e != nil {
+		return def
 	}
 	return i
 }
