@@ -21,18 +21,33 @@ type Config struct {
 	val  map[string]map[string]string
 }
 
-//Get ...
-func (c *Config) Get(key string) string {
-	split := strings.SplitN(key, `.`, 2)
+func (c *Config) get(key string) *string {
 	if c.val == nil {
-		return ``
+		return nil
 	}
+	split := strings.SplitN(key, `.`, 2)
 	if root, ok := c.val[split[0]]; ok {
 		if val, ok := root[split[1]]; ok {
-			return val
+			return &val
 		}
 	}
+	return nil
+}
+
+//Get retrieve string value by key or return empty string if not found
+func (c *Config) Get(key string) string {
+	if str := c.get(key); str != nil {
+		return *str
+	}
 	return ``
+}
+
+//GetOr retrieve string value by key or return def value if not found
+func (c *Config) GetOr(key, def string) string {
+	if str := c.get(key); str != nil {
+		return *str
+	}
+	return def
 }
 
 //GetInt ...
