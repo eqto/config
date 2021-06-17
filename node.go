@@ -32,6 +32,9 @@ func (n *Node) get(key string) *string {
 	if n.val == nil {
 		return nil
 	}
+	if val, ok := n.val[key]; ok {
+		return &val
+	}
 	split := strings.SplitN(key, `.`, 2)
 	if val, ok := n.val[split[0]]; ok {
 		return &val
