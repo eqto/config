@@ -3,11 +3,15 @@ package config
 import (
 	"bufio"
 	"fmt"
-	"io"
+	"log"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/radovskyb/watcher"
 )
 
 const (
@@ -19,6 +23,7 @@ const (
 type Config struct {
 	file  string
 	nodes map[string]*Node
+	lock  sync.RWMutex
 }
 
 //Get retrieve string value by key or return empty string if not found
@@ -27,6 +32,8 @@ func (c *Config) Get(key string) string {
 }
 
 func (c *Config) GetArray(key string) []*Node {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	if n, ok := c.nodes[key]; ok {
 		return n.arr
 	}
@@ -59,6 +66,8 @@ func (c *Config) GetIntOr(key string, def int) int {
 }
 
 func (c *Config) String() string {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	sb := strings.Builder{}
 	sb.WriteString(fmt.Sprintf("File: %s\n", c.file))
 	for nname, nval := range c.nodes {
@@ -69,6 +78,8 @@ func (c *Config) String() string {
 }
 
 func (c *Config) get(key string) *string {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	split := strings.SplitN(key, `.`, 2)
 	if n := c.node(split[0]); n != nil {
 		if s := n.get(split[1]); s != nil {
@@ -76,6 +87,37 @@ func (c *Config) get(key string) *string {
 		}
 	}
 	return nil
+}
+
+func (c *Config) watch() {
+	w := watcher.New()
+	w.SetMaxEvents(1)
+	w.FilterOps(watcher.Write)
+
+	go func() {
+		for {
+			select {
+			case <-w.Event:
+				cfg, e := parse(c.file)
+				if e == nil {
+					c.lock.Lock()
+					c.nodes = cfg.nodes
+					c.lock.Unlock()
+				}
+			case err := <-w.Error:
+				log.Println(err)
+			case <-w.Closed:
+				return
+			}
+		}
+	}()
+
+	if e := w.Add(c.file); e != nil {
+		log.Println(e)
+	}
+	if e := w.Start(1 * time.Second); e != nil {
+		log.Println(e)
+	}
 }
 
 func (c *Config) node(key string) *Node {
@@ -87,23 +129,27 @@ func (c *Config) node(key string) *Node {
 
 //ParseFile ...
 func ParseFile(file string) (*Config, error) {
-	cfg := &Config{file: file}
-	f, e := os.Open(file)
+	cfg, e := parse(file)
 	if e != nil {
-		return cfg, e
+		return &Config{file: file}, e
 	}
-	cfg = parse(f)
-	cfg.file = file
+	go cfg.watch()
 	return cfg, nil
 }
 
-func parse(r io.Reader) *Config {
-	scanner := bufio.NewScanner(r)
+func parse(file string) (*Config, error) {
+	f, e := os.Open(file)
+	if e != nil {
+		return nil, e
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
 	regexLine := regexp.MustCompile(strLine)
 	regexRoot := regexp.MustCompile(strRootLine)
 
 	root := ``
-	cfg := &Config{nodes: make(map[string]*Node)}
+	cfg := &Config{file: file, nodes: make(map[string]*Node)}
 	for scanner.Scan() {
 		strLine := scanner.Text()
 		if matches := regexLine.FindStringSubmatch(strLine); len(matches) > 0 {
@@ -127,5 +173,5 @@ func parse(r io.Reader) *Config {
 			cfg.nodes[root] = n
 		}
 	}
-	return cfg
+	return cfg, nil
 }
