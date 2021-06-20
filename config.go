@@ -26,6 +26,24 @@ type Config struct {
 	lock  sync.RWMutex
 }
 
+func (c *Config) Put(key string, value string) *Config {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.nodes == nil {
+		c.nodes = make(map[string]*Node)
+	}
+	split := strings.SplitN(key, `.`, 2)
+	if len(split) < 2 {
+		return c
+	}
+	node := c.node(split[0])
+	if node == nil {
+		node = c.newRoot(split[0])
+	}
+	node.set(split[1], value)
+	return c
+}
+
 //Get retrieve string value by key or return empty string if not found
 func (c *Config) Get(key string) string {
 	return c.GetOr(key, ``)
@@ -127,11 +145,22 @@ func (c *Config) node(key string) *Node {
 	return nil
 }
 
+func (c *Config) newRoot(key string) *Node {
+	c.nodes[key] = &Node{val: make(map[string]string)}
+	return c.node(key)
+}
+
+func New() *Config {
+	return &Config{nodes: make(map[string]*Node)}
+}
+
 //ParseFile ...
 func ParseFile(file string) (*Config, error) {
 	cfg, e := parse(file)
 	if e != nil {
-		return &Config{file: file}, e
+		cfg = New()
+		cfg.file = file
+		return cfg, e
 	}
 	go cfg.watch()
 	return cfg, nil
@@ -149,7 +178,8 @@ func parse(file string) (*Config, error) {
 	regexRoot := regexp.MustCompile(strRootLine)
 
 	root := ``
-	cfg := &Config{file: file, nodes: make(map[string]*Node)}
+	cfg := New()
+	cfg.file = file
 	for scanner.Scan() {
 		strLine := scanner.Text()
 		if matches := regexLine.FindStringSubmatch(strLine); len(matches) > 0 {
