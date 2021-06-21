@@ -83,6 +83,28 @@ func (c *Config) GetIntOr(key string, def int) int {
 	return 0
 }
 
+func (c *Config) Save() error {
+	os.Mkdir(`configs`, 0750)
+	f, e := os.OpenFile(c.file, os.O_CREATE|os.O_WRONLY, 0750)
+	if e != nil {
+		return e
+	}
+	defer f.Close()
+	if e := f.Truncate(0); e != nil {
+		return e
+	}
+	if _, e := f.WriteString(c.String()); e != nil {
+		return e
+	}
+	go c.watch()
+	return nil
+}
+
+func (c *Config) SaveToFile(file string) error {
+	c.file = file
+	return c.Save()
+}
+
 func (c *Config) String() string {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
