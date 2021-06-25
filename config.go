@@ -2,16 +2,9 @@ package config
 
 import (
 	"bufio"
-	"fmt"
-	"log"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
-	"sync"
-	"time"
-
-	"github.com/radovskyb/watcher"
 )
 
 const (
@@ -19,177 +12,75 @@ const (
 	strLine     = `^(?Ui)\s*([a-z0-9_.]+)\s*=\s*(.*)(\s+(?:#|/{2,}).*|)\s*$`
 )
 
-//Config ...
-type Config struct {
-	file  string
-	nodes map[string]*Node
-	lock  sync.RWMutex
+var stdFile = New()
+
+func Open(filename string) error {
+	f, e := ParseFile(filename)
+	if e != nil {
+		return e
+	}
+	stdFile = f
+	return nil
 }
 
-func (c *Config) Put(key string, value string) *Config {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.nodes == nil {
-		c.nodes = make(map[string]*Node)
-	}
-	split := strings.SplitN(key, `.`, 2)
-	if len(split) < 2 {
-		return c
-	}
-	node := c.node(split[0])
-	if node == nil {
-		node = c.newRoot(split[0])
-	}
-	node.set(split[1], value)
-	return c
+func Put(key string, value string) {
+	stdFile.Put(key, value)
 }
 
 //Get retrieve string value by key or return empty string if not found
-func (c *Config) Get(key string) string {
-	return c.GetOr(key, ``)
+func Get(key string) string {
+	return stdFile.GetOr(key, ``)
 }
 
-func (c *Config) GetArray(key string) []*Node {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	if n, ok := c.nodes[key]; ok {
-		return n.arr
-	}
-	return nil
+func GetArray(key string) []*Node {
+	return stdFile.GetArray(key)
 }
 
 //GetOr retrieve string value by key or return def value if not found
-func (c *Config) GetOr(key, def string) string {
-	if s := c.get(key); s != nil {
-		return *s
-	}
-	return def
+func GetOr(key, def string) string {
+	return stdFile.GetOr(key, def)
 }
 
 //GetInt ...
-func (c *Config) GetInt(key string) int {
-	return c.GetIntOr(key, 0)
+func GetInt(key string) int {
+	return stdFile.GetInt(key)
 }
 
 //GetIntOr ...
-func (c *Config) GetIntOr(key string, def int) int {
-	if s := c.get(key); s != nil {
-		i, e := strconv.Atoi(*s)
-		if e != nil {
-			return 0
-		}
-		return i
-	}
-	return 0
+func GetIntOr(key string, def int) int {
+	return stdFile.GetIntOr(key, def)
 }
 
-func (c *Config) Save() error {
-	os.Mkdir(`configs`, 0750)
-	f, e := os.OpenFile(c.file, os.O_CREATE|os.O_WRONLY, 0750)
-	if e != nil {
-		return e
-	}
-	defer f.Close()
-	if e := f.Truncate(0); e != nil {
-		return e
-	}
-	if _, e := f.WriteString(c.String()); e != nil {
-		return e
-	}
-	go c.watch()
-	return nil
+func Save() error {
+	return stdFile.Save()
 }
 
-func (c *Config) SaveToFile(file string) error {
-	c.file = file
-	return c.Save()
+func String() string {
+	return stdFile.String()
 }
 
-func (c *Config) String() string {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("File: %s\n", c.file))
-	for nname, nval := range c.nodes {
-		sb.WriteString(fmt.Sprintf("[%s]\n", nname))
-		sb.WriteString(nval.String())
-	}
-	return sb.String()
+func New() *File {
+	return &File{nodes: make(map[string]*Node)}
 }
 
-func (c *Config) get(key string) *string {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	split := strings.SplitN(key, `.`, 2)
-	if n := c.node(split[0]); n != nil {
-		if s := n.get(split[1]); s != nil {
-			return s
-		}
-	}
-	return nil
-}
-
-func (c *Config) watch() {
-	w := watcher.New()
-	w.SetMaxEvents(1)
-	w.FilterOps(watcher.Write)
-
-	go func() {
-		for {
-			select {
-			case <-w.Event:
-				cfg, e := parse(c.file)
-				if e == nil {
-					c.lock.Lock()
-					c.nodes = cfg.nodes
-					c.lock.Unlock()
-				}
-			case err := <-w.Error:
-				log.Println(err)
-			case <-w.Closed:
-				return
-			}
-		}
-	}()
-
-	if e := w.Add(c.file); e != nil {
-		log.Println(e)
-	}
-	if e := w.Start(1 * time.Second); e != nil {
-		log.Println(e)
-	}
-}
-
-func (c *Config) node(key string) *Node {
-	if n, ok := c.nodes[key]; ok {
-		return n
-	}
-	return nil
-}
-
-func (c *Config) newRoot(key string) *Node {
-	c.nodes[key] = &Node{val: make(map[string]string)}
-	return c.node(key)
-}
-
-func New() *Config {
-	return &Config{nodes: make(map[string]*Node)}
+func NewFile(filename string) *File {
+	return &File{filename: filename, nodes: make(map[string]*Node)}
 }
 
 //ParseFile ...
-func ParseFile(file string) (*Config, error) {
-	cfg, e := parse(file)
+func ParseFile(filename string) (*File, error) {
+	cfg, e := parse(filename)
 	if e != nil {
 		cfg = New()
-		cfg.file = file
+		cfg.filename = filename
 		return cfg, e
 	}
 	go cfg.watch()
 	return cfg, nil
 }
 
-func parse(file string) (*Config, error) {
-	f, e := os.Open(file)
+func parse(filename string) (*File, error) {
+	f, e := os.Open(filename)
 	if e != nil {
 		return nil, e
 	}
@@ -201,7 +92,7 @@ func parse(file string) (*Config, error) {
 
 	root := ``
 	cfg := New()
-	cfg.file = file
+	cfg.filename = filename
 	for scanner.Scan() {
 		strLine := scanner.Text()
 		if matches := regexLine.FindStringSubmatch(strLine); len(matches) > 0 {
