@@ -101,7 +101,6 @@ func (f *File) String() string {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("File: %s\n", f.filename))
 	for nname, nval := range f.nodes {
 		sb.WriteString(fmt.Sprintf("[%s]\n", nname))
 		sb.WriteString(nval.String())
