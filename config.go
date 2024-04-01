@@ -41,12 +41,10 @@ func GetOr(key, def string) string {
 	return stdFile.GetOr(key, def)
 }
 
-//GetInt ...
 func GetInt(key string) int {
 	return stdFile.GetInt(key)
 }
 
-//GetIntOr ...
 func GetIntOr(key string, def int) int {
 	return stdFile.GetIntOr(key, def)
 }
@@ -67,7 +65,6 @@ func NewFile(filename string) *File {
 	return &File{filename: filename, nodes: make(map[string]*Node)}
 }
 
-//ParseFile ...
 func ParseFile(filename string) (*File, error) {
 	cfg, e := parse(filename)
 	if e != nil {

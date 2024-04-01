@@ -13,7 +13,6 @@ import (
 	"github.com/radovskyb/watcher"
 )
 
-//File ...
 type File struct {
 	filename string
 	nodes    map[string]*Node
@@ -38,7 +37,7 @@ func (f *File) Put(key string, value string) *File {
 	return f
 }
 
-//Get retrieve string value by key or return empty string if not found
+// Get retrieve string value by key or return empty string if not found
 func (f *File) Get(key string) string {
 	return f.GetOr(key, ``)
 }
@@ -52,7 +51,7 @@ func (f *File) GetArray(key string) []*Node {
 	return nil
 }
 
-//GetOr retrieve string value by key or return def value if not found
+// GetOr retrieve string value by key or return def value if not found
 func (f *File) GetOr(key, def string) string {
 	if s := f.get(key); s != nil {
 		return *s
@@ -60,21 +59,19 @@ func (f *File) GetOr(key, def string) string {
 	return def
 }
 
-//GetInt ...
 func (f *File) GetInt(key string) int {
 	return f.GetIntOr(key, 0)
 }
 
-//GetIntOr ...
 func (f *File) GetIntOr(key string, def int) int {
 	if s := f.get(key); s != nil {
 		i, e := strconv.Atoi(*s)
 		if e != nil {
-			return 0
+			return def
 		}
 		return i
 	}
-	return 0
+	return def
 }
 
 func (f *File) Save() error {
