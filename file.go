@@ -14,9 +14,10 @@ import (
 )
 
 type File struct {
-	filename string
-	nodes    map[string]*Node
-	lock     sync.RWMutex
+	filename       string
+	nodes          map[string]*Node
+	lock           sync.RWMutex
+	changeListener func()
 }
 
 func (f *File) Put(key string, value string) *File {
@@ -105,6 +106,10 @@ func (f *File) String() string {
 	return sb.String()
 }
 
+func (f *File) OnChanges(fun func()) {
+	f.changeListener = fun
+}
+
 func (f *File) get(key string) *string {
 	f.lock.RLock()
 	defer f.lock.RUnlock()
@@ -131,6 +136,9 @@ func (f *File) watch() {
 					f.lock.Lock()
 					f.nodes = cfg.nodes
 					f.lock.Unlock()
+					if f.changeListener != nil {
+						f.changeListener()
+					}
 				}
 			case err := <-w.Error:
 				log.Println(err)

@@ -27,7 +27,7 @@ func Put(key string, value string) {
 	stdFile.Put(key, value)
 }
 
-//Get retrieve string value by key or return empty string if not found
+// Get retrieve string value by key or return empty string if not found
 func Get(key string) string {
 	return stdFile.GetOr(key, ``)
 }
@@ -36,7 +36,7 @@ func GetArray(key string) []*Node {
 	return stdFile.GetArray(key)
 }
 
-//GetOr retrieve string value by key or return def value if not found
+// GetOr retrieve string value by key or return def value if not found
 func GetOr(key, def string) string {
 	return stdFile.GetOr(key, def)
 }
@@ -66,14 +66,18 @@ func NewFile(filename string) *File {
 }
 
 func ParseFile(filename string) (*File, error) {
-	cfg, e := parse(filename)
+	file, e := parse(filename)
 	if e != nil {
-		cfg = New()
-		cfg.filename = filename
-		return cfg, e
+		file = New()
+		file.filename = filename
+		return file, e
 	}
-	go cfg.watch()
-	return cfg, nil
+	go file.watch()
+	return file, nil
+}
+
+func OnChanges(fun func()) {
+	stdFile.OnChanges(fun)
 }
 
 func parse(filename string) (*File, error) {
