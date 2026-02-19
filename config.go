@@ -102,19 +102,25 @@ func parse(filename string) (*File, error) {
 			if strings.HasPrefix(val, `"`) && strings.HasSuffix(val, `"`) {
 				val = val[1 : len(val)-1]
 			}
+			if _, ok := cfg.nodes[root]; !ok {
+				cfg.nodes[root] = &Node{val: make(map[string]nodeValue)}
+			}
 			cfg.nodes[root].set(key, val)
 		} else if matches := regexRoot.FindStringSubmatch(strLine); len(matches) > 0 {
 			root = matches[2]
-			n := new(Node)
-			if matches[1] == `-` {
-				if cfg.nodes[root] != nil {
-					n = cfg.nodes[root]
-				}
-				n.arr = append(n.arr, &Node{val: make(map[string]string)})
-			} else {
-				n.val = make(map[string]string)
+			n, ok := cfg.nodes[root]
+			if !ok {
+				n = new(Node)
+				cfg.nodes[root] = n
 			}
-			cfg.nodes[root] = n
+
+			if matches[1] == `-` {
+				n.arr = append(n.arr, &Node{val: make(map[string]nodeValue)})
+			} else {
+				if n.val == nil {
+					n.val = make(map[string]nodeValue)
+				}
+			}
 		}
 	}
 	return cfg, nil

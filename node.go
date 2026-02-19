@@ -6,8 +6,10 @@ import (
 	"strings"
 )
 
+type nodeValue []string
+
 type Node struct {
-	val map[string]string
+	val map[string]nodeValue
 	arr []*Node
 }
 
@@ -32,30 +34,46 @@ func (n *Node) get(key string) *string {
 	if n.val == nil {
 		return nil
 	}
-	if val, ok := n.val[key]; ok {
-		return &val
+	if nodeVal, ok := n.val[key]; ok && len(nodeVal) > 0 {
+		return &nodeVal[0]
 	}
+	// This part is for handling dot-separated keys.
 	split := strings.SplitN(key, `.`, 2)
-	if val, ok := n.val[split[0]]; ok {
-		return &val
+	if nodeVal, ok := n.val[split[0]]; ok && len(nodeVal) > 0 {
+		return &nodeVal[0]
 	}
 	return nil
 }
 
 func (n *Node) set(key string, val string) {
 	if n.val == nil {
-		idx := len(n.arr) - 1
-		n.arr[idx].set(key, val)
-	} else {
-		n.val[key] = val
+		// This logic is for array of objects, e.g. -[database]
+		if len(n.arr) > 0 {
+			idx := len(n.arr) - 1
+			n.arr[idx].set(key, val)
+		}
+		return
 	}
+
+	// Append the new value. This works even if the key doesn't exist yet.
+	n.val[key] = append(n.val[key], val)
+}
+
+func (n *Node) getStringArray(key string) []string {
+	if n.val != nil {
+		if nodeVal, ok := n.val[key]; ok {
+			return nodeVal
+		}
+	}
+	return nil
 }
 
 func (n *Node) String() string {
 	sb := strings.Builder{}
-	for key, val := range n.val {
-		sb.WriteString(fmt.Sprintf("%s = %s\n", key, val))
+	for key, nodeVal := range n.val {
+		for _, val := range nodeVal {
+			sb.WriteString(fmt.Sprintf("%s = %s\n", key, val))
+		}
 	}
 	return sb.String()
-
 }
