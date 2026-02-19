@@ -36,6 +36,10 @@ func GetArray(key string) []*Node {
 	return stdFile.GetArray(key)
 }
 
+func GetStringArray(key string) []string {
+	return stdFile.GetStringArray(key)
+}
+
 // GetOr retrieve string value by key or return def value if not found
 func GetOr(key, def string) string {
 	return stdFile.GetOr(key, def)
