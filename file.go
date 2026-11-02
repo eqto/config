@@ -199,3 +199,14 @@ func (f *File) newRoot(key string) *Node {
 	f.nodes[key] = &Node{val: make(map[string]nodeValue)}
 	return f.node(key)
 }
+
+// Watch monitors filename for write/remove/rename events and invokes
+// onChange on each — format-agnostic: unlike ParseFile it doesn't parse the
+// contents, so it can watch files in any format. The returned File is just
+// the lifecycle handle — Close() stops the watcher.
+func Watch(filename string, onChange func()) *File {
+	f := NewFile(filename)
+	f.changeListener = onChange
+	go f.watch()
+	return f
+}
